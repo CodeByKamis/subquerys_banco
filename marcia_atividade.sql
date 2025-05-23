@@ -65,21 +65,21 @@ INSERT INTO Emprestimos (id, id_livro, id_leitor, data_emprestimo, data_devoluca
 
 -- FAÇA TODOS COM SUBCONSULTA
 -- 1. Mostre o título e o ano de publicação dos livros cuja editora é “Companhia das Letras”. (subconsulta no Where)
-SELECT Livros.titulo, Livros.ano_publicacao
+SELECT Livros.titulo AS Livros, Livros.ano_publicacao AS Ano_Publicação
 FROM Livros
 WHERE id_editora = (SELECT id FROM Editoras WHERE nome = 'Companhia das Letras' );
 
 
 
 -- 2. Liste os nomes dos autores que possuem livros da editora “Rocco”. (subconsulta no Where)
-SELECT nome
+SELECT nome AS Autores
 FROM Autores
 WHERE id IN( SELECT id_autor FROM Livros WHERE id_editora = (SELECT id FROM Editoras WHERE nome = 'Rocco' )
 );
 
 
 -- 3. Mostre os títulos dos livros que foram emprestados por algum leitor com o nome “Ana Clara”. (subconsulta da subconsulta no Where)
-SELECT titulo
+SELECT titulo AS Livros
 FROM Livros
 WHERE Livros.id IN(
 	SELECT Emprestimos.id_livro
@@ -90,11 +90,82 @@ WHERE Livros.id IN(
 );
 
 -- 4. Mostre os livros que ainda estão emprestados (sem data de devolução).A subconsulta deve retornar os IDs dos livros em aberto.
-
+SELECT titulo AS Livros
+FROM Livros
+WHERE id IN (
+	SELECT id_livro
+    FROM Emprestimos
+    WHERE data_devolucao IS NULL
+);
 
 -- 5. Mostre os nomes dos autores que escreveram livros que ainda estão emprestados (sem data de devolução). (subconsulta da subconsulta no Where)
+SELECT nome AS Autores
+FROM Autores
+WHERE id IN (
+	SELECT id_autor
+    FROM Livros
+    WHERE id IN (
+	SELECT  id_livro
+    FROM Emprestimos
+    WHERE data_devolucao IS  NULL
+	)
+);
 -- 6. Liste os nomes dos leitores que ainda têm livros emprestados.(subconsulta no Where)
+SELECT nome AS Leitores
+FROM Leitores
+WHERE id IN (
+	SELECT id_leitor
+    FROM Emprestimos
+);
+
 -- 7. Mostre os nomes dos leitores e, ao lado, o nome do último livro que cada um pegou emprestado. (Mesmo que os dados estejam fixos, o foco é o uso no SELECT)
+SELECT Leitores.nome AS Leitores, Livros.titulo As Livros
+FROM Leitores
+INNER JOIN Emprestimos ON Leitores.id = Emprestimos.id_leitor
+INNER JOIN Livros ON Emprestimos.id_livro = Livros.id
+WHERE Emprestimos.data_emprestimo = (
+	SELECT MAX(Emprestimos.data_emprestimo) -- o max serve para pegar a maior data, no caso as ultima de cada id de leitor, ent se o leitor fez 2 empréstimos vai ser pegado a data com maior valor, a última.
+    FROM Emprestimos
+    WHERE Emprestimos.id_leitor = Leitores.id
+);
+
 -- 8. Liste os livros com o nome da editora ao lado, usando subconsulta no SELECT.
+SELECT titulo AS Livros,
+	(SELECT nome FROM Editoras WHERE Editoras.id = Livros.id_editora) AS Editora
+FROM Livros;
+
+
+
+
+-- O que é alias no SQL?
+-- 	Alias é um apelido temporário que você dá para uma tabela, coluna, ou resultado de uma subconsulta, só para facilitar a leitura e referência na consulta.
+
+-- Por que usar alias?
+-- 	Para deixar os nomes mais curtos ou claros.
+-- 	Para dar um nome para o resultado de uma subconsulta (obrigatório no FROM).
+-- 	Para evitar confusão quando a mesma tabela aparece mais de uma vez na consulta.
+-- 	Para deixar a query mais legível.
+
 -- 9. Liste os nomes e títulos de livros emprestados atualmente, usando uma subconsulta no FROM.
+SELECT 
+    Emprestimos.Leitor, -- ALIAS
+    Emprestimos.Livro -- ALIAS
+FROM (
+-- Aqui a gente faz o select certinho e afins
+    SELECT 
+        Leitores.nome AS Leitor, -- TEM QUE SER O MESMO NOME DO PRIMEIRO SELECT PARA ELE ENTENDER, É NECESSÁRIO USAR ALIAS
+        Livros.titulo AS Livro -- TAMBÉM TEM QUE DEIXAR O MESMO NOME DO PRIMEIRO SELECT
+    FROM Emprestimos
+    INNER JOIN Leitores ON Emprestimos.id_leitor = Leitores.id
+    INNER JOIN Livros ON Emprestimos.id_livro = Livros.id
+) AS emprestimos;
+
 -- 10. Mostre os nomes das editoras que publicaram livros emprestados, usando uma subconsulta no FROM.
+SELECT Editoras.nome AS Editoras -- não é uma alias
+-- selecionou a editora, onde o livro está no emprestado, faz o inner join para conseguir ligar as tabelas e chama todo esse fom de Subconsultinha, faz um INNER JOIN para ligar editora com todo o from
+FROM (
+    SELECT Livros.id_editora
+    FROM Emprestimos
+    INNER JOIN Livros ON Emprestimos.id_livro = Livros.id
+) AS Subconsultinha
+INNER JOIN Editoras ON Subconsultinha.id_editora = Editoras.id;
